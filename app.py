@@ -3,13 +3,19 @@ from textblob import TextBlob
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 import pandas as pd
 from translate import Translator
+import nltk
+from nltk.stem import PorterStemmer, SnowballStemmer
 import re
+
+# Descargar datos NLTK necesarios
+nltk.download('punkt', quiet=True)
 
 # 1. Configuración de página
 st.set_page_config(
-    page_title="Studio NLP: Sentimiento & TF-IDF",
+    page_title="Studio NLP: Sentimiento, TF-IDF & QA",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -113,7 +119,7 @@ st.markdown("""
         margin-bottom: 8px;
     }
 
-    /* Animaciones CSS exclusivas para TF-IDF */
+    /* Animación de Radar Pulsante para TF-IDF */
     @keyframes pulse-radar {
         0% { transform: scale(0.98); opacity: 0.8; box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.5); }
         50% { transform: scale(1.02); opacity: 1; box-shadow: 0 0 20px 5px rgba(37, 99, 235, 0.4); }
@@ -136,6 +142,21 @@ st.markdown("""
         letter-spacing: 1px;
         margin: 8px 0;
     }
+
+    /* Animación de Escaneo para Preguntas y Respuestas QA */
+    @keyframes scan-glow {
+        0% { border-color: #3b82f6; box-shadow: 0 0 5px rgba(59, 130, 246, 0.2); }
+        50% { border-color: #10b981; box-shadow: 0 0 25px rgba(16, 185, 129, 0.6); }
+        100% { border-color: #3b82f6; box-shadow: 0 0 5px rgba(59, 130, 246, 0.2); }
+    }
+
+    .qa-response-card {
+        background: #111827;
+        border: 2px solid #10b981;
+        border-radius: 12px;
+        padding: 20px;
+        animation: scan-glow 2.5s infinite ease-in-out;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -145,7 +166,11 @@ with st.sidebar:
     
     opcion_menu = st.radio(
         "Módulo de trabajo:",
-        ["Análisis de Sentimiento & WordCloud", "Análisis de Relevancia TF-IDF"],
+        [
+            "Análisis de Sentimiento & WordCloud",
+            "Análisis de Relevancia TF-IDF",
+            "Demo TF-IDF Preguntas y Respuestas"
+        ],
         label_visibility="collapsed"
     )
     
@@ -155,8 +180,11 @@ with st.sidebar:
     if opcion_menu == "Análisis de Sentimiento & WordCloud":
         ancho_nube = st.slider("Ancho de Nube de Palabras", 400, 800, 600, 50)
         alto_nube = st.slider("Alto de Nube de Palabras", 200, 500, 300, 50)
-    else:
+    elif opcion_menu == "Análisis de Relevancia TF-IDF":
         max_features = st.slider("Máximo de términos (Top Words)", 5, 20, 10)
+    else:
+        idioma_qa = st.selectbox("Idioma del motor QA:", ["Español", "Inglés"])
+        usar_stemming = st.checkbox("Aplicar Stemming (Normalización)", value=True)
 
 # Encabezado principal
 st.markdown('<div class="brand-header">Studio NLP & Text Analytics</div>', unsafe_allow_html=True)
@@ -164,7 +192,7 @@ st.markdown(f'<div class="brand-sub"><span class="tag-pill">Módulo Activo</span
 
 
 # ---------------------------------------------------------
-# EJERCICIO 1: ANÁLISIS DE SENTIMIENTO & WORDCLOUD
+# MÓDULO 1: ANÁLISIS DE SENTIMIENTO & WORDCLOUD
 # ---------------------------------------------------------
 if opcion_menu == "Análisis de Sentimiento & WordCloud":
     st.markdown("#### Análisis de Sentimiento y Nube de Palabras")
@@ -257,9 +285,36 @@ if opcion_menu == "Análisis de Sentimiento & WordCloud":
         else:
             st.warning("Por favor ingresa un texto antes de presionar el botón.")
 
+    st.markdown("---")
+    st.markdown("#### Selecciona cómo te sientes hoy")
+    
+    col_btn, col_info = st.columns([1, 1], gap="large")
+    
+    with col_btn:
+        if st.button("😄 Estoy muy feliz", use_container_width=True):
+            st.session_state["mood"] = "happy"
+        if st.button("🥺 Estoy triste", use_container_width=True):
+            st.session_state["mood"] = "sad"
+        if st.button("🧐 Estoy neutral", use_container_width=True):
+            st.session_state["mood"] = "neutral"
+
+    with col_info:
+        if "mood" in st.session_state:
+            mood = st.session_state["mood"]
+            if mood == "happy":
+                st.balloons()
+                st.success("✨ Sentimiento: Positivo / Feliz")
+                st.info(" Mensaje de refuerzo: ¡Mantén esa sonrisa y esa buena vibración todo el día!")
+            elif mood == "sad":
+                st.error(" Sentimiento: Negativo / Triste")
+                st.info(" Mensaje de apoyo: Mañana será un día mejor. ¡Un abrazo fuerte!")
+            elif mood == "neutral":
+                st.info(" Sentimiento: Neutral")
+                st.info(" Mensaje reflexivo: Un día tranquilo es una excelente oportunidad para descansar.")
+
 
 # ---------------------------------------------------------
-# EJERCICIO 2: ANÁLISIS DE RELEVANCIA TF-IDF
+# MÓDULO 2: ANÁLISIS DE RELEVANCIA TF-IDF
 # ---------------------------------------------------------
 elif opcion_menu == "Análisis de Relevancia TF-IDF":
     st.markdown("#### Análisis TF-IDF con Animación de Radar")
@@ -290,7 +345,6 @@ elif opcion_menu == "Análisis de Relevancia TF-IDF":
                 top_word = promedio_tfidf.index[0]
                 top_score = promedio_tfidf.iloc[0]
                 
-                # Sección superior con la animación del radar para la palabra clave
                 col_chart, col_radar = st.columns([1.2, 0.8], gap="large")
                 
                 with col_radar:
@@ -330,3 +384,99 @@ elif opcion_menu == "Análisis de Relevancia TF-IDF":
                 st.error(f"Error al calcular TF-IDF: {e}")
         else:
             st.warning("Ingresa al menos dos líneas distintas de texto para comparar.")
+
+
+# ---------------------------------------------------------
+# MÓDULO 3: DEMO TF-IDF PREGUNTAS Y RESPUESTAS (QA)
+# ---------------------------------------------------------
+elif opcion_menu == "Demo TF-IDF Preguntas y Respuestas":
+    st.markdown("#### Demo de TF-IDF con Preguntas y Respuestas")
+    st.write("Cada línea se trata como un **documento**. Ingresa las oraciones y formula una pregunta para encontrar la respuesta más relevante usando similitud vectorial TF-IDF.")
+    
+    if idioma_qa == "Español":
+        doc_default = "El perro ladra fuerte en el parque.\nEl gato maúlla suavemente durante la noche.\nEl perro y el gato juegan juntos en el jardín.\nLos niños corren y se divierten en el parque.\nLa música suena muy alta en la fiesta."
+        preg_default = "¿Dónde juegan el perro y el gato?"
+    else:
+        doc_default = "The dog barks loudly.\nThe cat meows at night.\nThe dog and the cat play together."
+        preg_default = "Who is playing?"
+
+    col_input, col_sug = st.columns([1.2, 0.8], gap="large")
+
+    with col_input:
+        st.markdown("**Escribe tus documentos (uno por línea):**")
+        docs_input = st.text_area("Documentos:", value=doc_default, height=150, label_visibility="collapsed")
+        
+        st.markdown("**Escribe tu pregunta:**")
+        pregunta_input = st.text_input("Pregunta:", value=preg_default, label_visibility="collapsed")
+
+    with col_sug:
+        st.markdown("##### 💡 Preguntas Sugeridas")
+        if idioma_qa == "Español":
+            st.code("¿Dónde juegan el perro y el gato?\n¿Qué hacen los niños en el parque?\n¿Dónde suena la música alta?\n¿Qué animal maúlla durante la noche?", language="text")
+        else:
+            st.code("Who is playing?\nWhat does the dog do?\nWhen does the cat meow?", language="text")
+
+    if st.button("🔍 Calcular TF-IDF y Buscar Respuesta", use_container_width=True):
+        documentos_list = [doc.strip() for doc in docs_input.split('\n') if doc.strip() != ""]
+        
+        if len(documentos_list) > 0 and pregunta_input.strip() != "":
+            try:
+                def preprocess_stem(text_list, lang):
+                    if not usar_stemming:
+                        return text_list
+                    stemmer = PorterStemmer() if lang == "Inglés" else SnowballStemmer("spanish")
+                    processed = []
+                    for doc in text_list:
+                        words = re.findall(r'\w+', doc.lower())
+                        stemmed_words = [stemmer.stem(w) for w in words]
+                        processed.append(" ".join(stemmed_words))
+                    return processed
+
+                corpus_full = documentos_list + [pregunta_input]
+                corpus_processed = preprocess_stem(corpus_full, idioma_qa)
+                
+                vectorizer = TfidfVectorizer()
+                tfidf_matrix = vectorizer.fit_transform(corpus_processed)
+                
+                doc_vectors = tfidf_matrix[:-1]
+                question_vector = tfidf_matrix[-1]
+                
+                similaridades = cosine_similarity(question_vector, doc_vectors).flatten()
+                
+                best_idx = similaridades.argmax()
+                best_score = similaridades[best_idx]
+                best_doc = documentos_list[best_idx]
+                
+                st.markdown("---")
+                col_ans, col_scan = st.columns([1.1, 0.9], gap="large")
+                
+                with col_ans:
+                    st.markdown("##### 🎯 Respuesta Encontrada")
+                    if best_score > 0:
+                        qa_card_html = f"""
+                        <div class="qa-response-card">
+                            <span style="background:#059669; color:#ffffff; padding:2px 10px; border-radius:12px; font-size:0.8rem; font-weight:600;">Match Encontrado</span>
+                            <h3 style="margin:10px 0 5px 0; color:#34d399;">"{best_doc}"</h3>
+                            <p style="margin:0; color:#9ca3af; font-size:0.85rem;">Documento #{best_idx + 1} de la colección</p>
+                        </div>
+                        """
+                        st.markdown(qa_card_html, unsafe_allow_html=True)
+                    else:
+                        st.warning("No se encontró coincidencia relevante para esa pregunta en los documentos ingresados.")
+
+                with col_scan:
+                    st.markdown("##### 📊 Nivel de Coincidencia (Coseno TF-IDF)")
+                    st.write(f"**Puntaje de Similitud:** `{best_score:.4f}`")
+                    st.progress(float(best_score))
+                    
+                    df_scores = pd.DataFrame({
+                        "Documento": [f"Doc {i+1}: {doc[:30]}..." for i, doc in enumerate(documentos_list)],
+                        "Similitud Coseno": similaridades
+                    }).sort_values(by="Similitud Coseno", ascending=False)
+                    
+                    st.dataframe(df_scores.style.background_gradient(cmap="Greens"), use_container_width=True)
+
+            except Exception as e:
+                st.error(f"Error al procesar la consulta QA: {e}")
+        else:
+            st.warning("Por favor ingresa documentos y una pregunta para realizar el análisis.")
