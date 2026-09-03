@@ -14,7 +14,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilo UI/UX en modo oscuro y animación CSS para emojis
+# Estilo UI/UX en modo oscuro y animaciones CSS
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -68,7 +68,7 @@ st.markdown("""
         margin-right: 8px;
     }
 
-    /* Personajes Animados mediante CSS y Emojis */
+    /* Animaciones CSS para Sentimiento */
     @keyframes float-anim {
         0% { transform: translateY(0px) scale(1); }
         50% { transform: translateY(-10px) scale(1.05); }
@@ -111,6 +111,30 @@ st.markdown("""
         font-size: 4rem;
         line-height: 1;
         margin-bottom: 8px;
+    }
+
+    /* Animaciones CSS exclusivas para TF-IDF */
+    @keyframes pulse-radar {
+        0% { transform: scale(0.98); opacity: 0.8; box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.5); }
+        50% { transform: scale(1.02); opacity: 1; box-shadow: 0 0 20px 5px rgba(37, 99, 235, 0.4); }
+        100% { transform: scale(0.98); opacity: 0.8; box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.5); }
+    }
+
+    .tfidf-card {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid #3b82f6;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        animation: pulse-radar 3s infinite ease-in-out;
+    }
+
+    .top-word-highlight {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #60a5fa;
+        letter-spacing: 1px;
+        margin: 8px 0;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -155,7 +179,6 @@ if opcion_menu == "Análisis de Sentimiento & WordCloud":
     
     if st.button("Procesar Sentimiento y WordCloud", use_container_width=True):
         if texto_sentimiento.strip() != "":
-            # Traducción robusta previa al inglés
             try:
                 translator = Translator(to_lang="en")
                 texto_en = translator.translate(texto_sentimiento)
@@ -166,7 +189,6 @@ if opcion_menu == "Análisis de Sentimiento & WordCloud":
             polaridad = blob.sentiment.polarity
             subjetividad = blob.sentiment.subjectivity
             
-            # Filtro de palabras tristes/negativas para ajustar la polaridad en textos literarios
             palabras_negativas = ["herida", "dolor", "doler", "desventura", "muerte", "lloro", "triste", "mal", "miedo"]
             if any(palabra in texto_sentimiento.lower() for palabra in palabras_negativas):
                 if polaridad > 0:
@@ -240,7 +262,7 @@ if opcion_menu == "Análisis de Sentimiento & WordCloud":
 # EJERCICIO 2: ANÁLISIS DE RELEVANCIA TF-IDF
 # ---------------------------------------------------------
 elif opcion_menu == "Análisis de Relevancia TF-IDF":
-    st.markdown("#### Análisis TF-IDF")
+    st.markdown("#### Análisis TF-IDF con Animación de Radar")
     st.write("Ingresa dos o más párrafos (uno por línea) para calcular la relevancia de cada término:")
     
     texto_tfidf = st.text_area(
@@ -264,25 +286,46 @@ elif opcion_menu == "Análisis de Relevancia TF-IDF":
                     index=[f"Documento {i+1}" for i in range(len(documentos))]
                 )
                 
-                st.markdown("##### Matriz de Relevancia TF-IDF")
+                promedio_tfidf = df_tfidf.mean(axis=0).sort_values(ascending=False)
+                top_word = promedio_tfidf.index[0]
+                top_score = promedio_tfidf.iloc[0]
+                
+                # Sección superior con la animación del radar para la palabra clave
+                col_chart, col_radar = st.columns([1.2, 0.8], gap="large")
+                
+                with col_radar:
+                    st.markdown("##### Término Clave Dominante")
+                    tfidf_anim_html = f"""
+                    <div class="tfidf-card">
+                        <div style="font-size:2.5rem;">📡 Network Radar</div>
+                        <div class="top-word-highlight">"{top_word.upper()}"</div>
+                        <p style="margin:0; color:#94a3b8; font-size:0.9rem;">
+                            Mayor índice TF-IDF global: <b>{top_score:.3f}</b>
+                        </p>
+                    </div>
+                    """
+                    st.markdown(tfidf_anim_html, unsafe_allow_html=True)
+
+                with col_chart:
+                    st.markdown("##### Distribución del Top de Términos")
+                    fig, ax = plt.subplots(figsize=(6, 3))
+                    fig.patch.set_facecolor('#0f1117')
+                    ax.set_facecolor('#181b24')
+                    
+                    promedio_tfidf.plot(kind='bar', ax=ax, color='#3b82f6')
+                    ax.tick_params(colors='#e2e8f0', which='both')
+                    ax.spines['bottom'].set_color('#262b36')
+                    ax.spines['top'].set_color('#262b36')
+                    ax.spines['right'].set_color('#262b36')
+                    ax.spines['left'].set_color('#262b36')
+                    plt.xticks(rotation=45, ha='right')
+                    
+                    st.pyplot(fig)
+                
+                st.markdown("---")
+                st.markdown("##### Matriz Completa de Relevancia TF-IDF")
                 st.dataframe(df_tfidf.style.background_gradient(cmap="Blues"), use_container_width=True)
                 
-                st.markdown("##### Términos más relevantes globalmente")
-                promedio_tfidf = df_tfidf.mean(axis=0).sort_values(ascending=False)
-                
-                fig, ax = plt.subplots(figsize=(8, 3.5))
-                fig.patch.set_facecolor('#0f1117')
-                ax.set_facecolor('#181b24')
-                
-                promedio_tfidf.plot(kind='bar', ax=ax, color='#2563eb')
-                ax.tick_params(colors='#e2e8f0', which='both')
-                ax.spines['bottom'].set_color('#262b36')
-                ax.spines['top'].set_color('#262b36')
-                ax.spines['right'].set_color('#262b36')
-                ax.spines['left'].set_color('#262b36')
-                plt.xticks(rotation=45, ha='right')
-                
-                st.pyplot(fig)
             except Exception as e:
                 st.error(f"Error al calcular TF-IDF: {e}")
         else:
