@@ -10,7 +10,7 @@ import nltk
 from nltk.stem import PorterStemmer, SnowballStemmer
 import re
 
-# Descargar datos NLTK necesarios
+# Descargar datos NLTK requeridos
 nltk.download('punkt', quiet=True)
 
 # 1. Configuración de página
@@ -20,7 +20,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilo UI/UX en modo oscuro y animaciones CSS
+# Estilos UI/UX en modo oscuro y animaciones CSS
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -49,18 +49,20 @@ st.markdown("""
     }
     
     .stButton>button {
-        background-color: #2563eb;
-        color: #ffffff;
-        border: none;
-        border-radius: 8px;
-        font-weight: 500;
-        padding: 0.6rem 1.2rem;
-        transition: all 0.2s ease;
+        background-color: #1e293b;
+        color: #e2e8f0;
+        border: 1px solid #334155;
+        border-radius: 12px;
+        font-weight: 600;
+        padding: 0.8rem 1.2rem;
+        transition: all 0.3s ease;
     }
     
     .stButton>button:hover {
-        background-color: #1d4ed8;
-        border: none;
+        border-color: #3b82f6;
+        background-color: #334155;
+        color: #ffffff;
+        transform: translateY(-2px);
     }
 
     .tag-pill {
@@ -72,6 +74,31 @@ st.markdown("""
         font-size: 0.8rem;
         font-weight: 500;
         margin-right: 8px;
+    }
+
+    /* Tarjetas de Ánimo */
+    .mood-card-happy {
+        background: linear-gradient(135deg, #065f46 0%, #022c22 100%);
+        border: 1px solid #34d399;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+    }
+
+    .mood-card-sad {
+        background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);
+        border: 1px solid #60a5fa;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+    }
+
+    .mood-card-neutral {
+        background: linear-gradient(135deg, #334155 0%, #0f172a 100%);
+        border: 1px solid #94a3b8;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
     }
 
     /* Animaciones CSS para Sentimiento */
@@ -119,7 +146,7 @@ st.markdown("""
         margin-bottom: 8px;
     }
 
-    /* Animación de Radar Pulsante para TF-IDF */
+    /* Radar TF-IDF */
     @keyframes pulse-radar {
         0% { transform: scale(0.98); opacity: 0.8; box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.5); }
         50% { transform: scale(1.02); opacity: 1; box-shadow: 0 0 20px 5px rgba(37, 99, 235, 0.4); }
@@ -143,19 +170,30 @@ st.markdown("""
         margin: 8px 0;
     }
 
-    /* Animación de Escaneo para Preguntas y Respuestas QA */
-    @keyframes scan-glow {
-        0% { border-color: #3b82f6; box-shadow: 0 0 5px rgba(59, 130, 246, 0.2); }
-        50% { border-color: #10b981; box-shadow: 0 0 25px rgba(16, 185, 129, 0.6); }
-        100% { border-color: #3b82f6; box-shadow: 0 0 5px rgba(59, 130, 246, 0.2); }
+    /* Animaciones exclusivas para QA (Preguntas y Respuestas) */
+    @keyframes qa-scan-beam {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
     }
 
-    .qa-response-card {
-        background: #111827;
+    @keyframes pulse-glow-emerald {
+        0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); border-color: #10b981; }
+        50% { box-shadow: 0 0 25px 8px rgba(16, 185, 129, 0.6); border-color: #34d399; }
+        100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); border-color: #10b981; }
+    }
+
+    .qa-animated-card {
+        background: linear-gradient(90deg, #064e3b 0%, #022c22 50%, #064e3b 100%);
+        background-size: 200% 100%;
         border: 2px solid #10b981;
-        border-radius: 12px;
-        padding: 20px;
-        animation: scan-glow 2.5s infinite ease-in-out;
+        border-radius: 14px;
+        padding: 24px;
+        animation: qa-scan-beam 4s infinite linear, pulse-glow-emerald 2.5s infinite ease-in-out;
+    }
+
+    .qa-radar-icon {
+        font-size: 2.8rem;
+        animation: float-anim 2s infinite ease-in-out;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -286,31 +324,51 @@ if opcion_menu == "Análisis de Sentimiento & WordCloud":
             st.warning("Por favor ingresa un texto antes de presionar el botón.")
 
     st.markdown("---")
-    st.markdown("#### Selecciona cómo te sientes hoy")
+    st.markdown("#### ¿Cómo te sientes hoy?")
+    st.write("Selecciona una emoción para activar la experiencia interactiva:")
     
-    col_btn, col_info = st.columns([1, 1], gap="large")
+    col_b1, col_b2, col_b3 = st.columns(3)
     
-    with col_btn:
-        if st.button("😄 Estoy muy feliz", use_container_width=True):
+    with col_b1:
+        if st.button("🥳 Estoy muy feliz", use_container_width=True):
             st.session_state["mood"] = "happy"
+    with col_b2:
         if st.button("🥺 Estoy triste", use_container_width=True):
             st.session_state["mood"] = "sad"
+    with col_b3:
         if st.button("🧐 Estoy neutral", use_container_width=True):
             st.session_state["mood"] = "neutral"
 
-    with col_info:
-        if "mood" in st.session_state:
-            mood = st.session_state["mood"]
-            if mood == "happy":
-                st.balloons()
-                st.success("✨ Sentimiento: Positivo / Feliz")
-                st.info(" Mensaje de refuerzo: ¡Mantén esa sonrisa y esa buena vibración todo el día!")
-            elif mood == "sad":
-                st.error(" Sentimiento: Negativo / Triste")
-                st.info(" Mensaje de apoyo: Mañana será un día mejor. ¡Un abrazo fuerte!")
-            elif mood == "neutral":
-                st.info(" Sentimiento: Neutral")
-                st.info(" Mensaje reflexivo: Un día tranquilo es una excelente oportunidad para descansar.")
+    if "mood" in st.session_state:
+        mood = st.session_state["mood"]
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        if mood == "happy":
+            st.balloons()
+            st.markdown("""
+            <div class="mood-card-happy">
+                <h3 style="margin:0; color:#6ee7b7;">🥳 Sentimiento: Positivo / Feliz</h3>
+                <p style="margin:8px 0 0 0; color:#a7f3d0;">✨ ¡Mantén esa sonrisa y comparte tu buena energía todo el día!</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        elif mood == "sad":
+            st.snow()
+            st.markdown("""
+            <div class="mood-card-sad">
+                <h3 style="margin:0; color:#93c5fd;">🥺 Sentimiento: Melancólico / Triste</h3>
+                <p style="margin:8px 0 0 0; color:#bfdbfe;">❄️ tómate un respiro. Mañana será un día mejor y lleno de nuevas oportunidades.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        elif mood == "neutral":
+            st.toast("💡 Estado neutral activado: ¡Modo reflexivo!", icon="🧐")
+            st.markdown("""
+            <div class="mood-card-neutral">
+                <h3 style="margin:0; color:#e2e8f0;">🧐 Sentimiento: Neutral / Calmo</h3>
+                <p style="margin:8px 0 0 0; color:#94a3b8;">💬 Un día de calma y equilibrio es ideal para enfocarte y descansar.</p>
+            </div>
+            """, unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------
@@ -391,7 +449,7 @@ elif opcion_menu == "Análisis de Relevancia TF-IDF":
 # ---------------------------------------------------------
 elif opcion_menu == "Demo TF-IDF Preguntas y Respuestas":
     st.markdown("#### Demo de TF-IDF con Preguntas y Respuestas")
-    st.write("Cada línea se trata como un **documento**. Ingresa las oraciones y formula una pregunta para encontrar la respuesta más relevante usando similitud vectorial TF-IDF.")
+    st.write("Cada línea se trata como un **documento**. Ingresa oraciones y formula preguntas para activar el escáner semántico:")
     
     if idioma_qa == "Español":
         doc_default = "El perro ladra fuerte en el parque.\nEl gato maúlla suavemente durante la noche.\nEl perro y el gato juegan juntos en el jardín.\nLos niños corren y se divierten en el parque.\nLa música suena muy alta en la fiesta."
@@ -451,13 +509,14 @@ elif opcion_menu == "Demo TF-IDF Preguntas y Respuestas":
                 col_ans, col_scan = st.columns([1.1, 0.9], gap="large")
                 
                 with col_ans:
-                    st.markdown("##### 🎯 Respuesta Encontrada")
+                    st.markdown("##### 🎯 Respuesta con Escaneo Semántico")
                     if best_score > 0:
                         qa_card_html = f"""
-                        <div class="qa-response-card">
-                            <span style="background:#059669; color:#ffffff; padding:2px 10px; border-radius:12px; font-size:0.8rem; font-weight:600;">Match Encontrado</span>
-                            <h3 style="margin:10px 0 5px 0; color:#34d399;">"{best_doc}"</h3>
-                            <p style="margin:0; color:#9ca3af; font-size:0.85rem;">Documento #{best_idx + 1} de la colección</p>
+                        <div class="qa-animated-card">
+                            <div class="qa-radar-icon">🎯📡</div>
+                            <span style="background:#10b981; color:#ffffff; padding:4px 12px; border-radius:12px; font-size:0.8rem; font-weight:700;">Coincidencia Detectada</span>
+                            <h3 style="margin:12px 0 6px 0; color:#a7f3d0; font-size:1.35rem;">"{best_doc}"</h3>
+                            <p style="margin:0; color:#9ca3af; font-size:0.85rem;">Extraído del Documento #{best_idx + 1}</p>
                         </div>
                         """
                         st.markdown(qa_card_html, unsafe_allow_html=True)
@@ -465,8 +524,8 @@ elif opcion_menu == "Demo TF-IDF Preguntas y Respuestas":
                         st.warning("No se encontró coincidencia relevante para esa pregunta en los documentos ingresados.")
 
                 with col_scan:
-                    st.markdown("##### 📊 Nivel de Coincidencia (Coseno TF-IDF)")
-                    st.write(f"**Puntaje de Similitud:** `{best_score:.4f}`")
+                    st.markdown("##### 📊 Nivel de Coincidencia Vectorial")
+                    st.write(f"**Puntaje Coseno TF-IDF:** `{best_score:.4f}`")
                     st.progress(float(best_score))
                     
                     df_scores = pd.DataFrame({
