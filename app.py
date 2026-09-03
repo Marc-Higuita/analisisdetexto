@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from sklearn.feature_extraction.text import TfidfVectorizer
 import pandas as pd
 from streamlit_lottie import st_lottie
-import requests
+from deep_translator import GoogleTranslator
 import re
 
 # 1. Configuración de página
@@ -15,7 +15,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilo UI/UX minimalista en modo oscuro y animaciones CSS
+# Estilo UI/UX minimalista en modo oscuro
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -68,62 +68,13 @@ st.markdown("""
         font-weight: 500;
         margin-right: 8px;
     }
-
-    /* Animaciones visuales personalizadas */
-    @keyframes pulse-green {
-        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
-        70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(34, 197, 94, 0); }
-        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
-    }
-    
-    @keyframes shake-red {
-        0%, 100% { transform: translateX(0); }
-        20%, 60% { transform: translateX(-5px); }
-        40%, 80% { transform: translateX(5px); }
-    }
-
-    .anim-box-positive {
-        background: #14532d;
-        border: 2px solid #22c55e;
-        border-radius: 12px;
-        padding: 20px;
-        text-align: center;
-        animation: pulse-green 2s infinite;
-    }
-
-    .anim-box-negative {
-        background: #7f1d1d;
-        border: 2px solid #ef4444;
-        border-radius: 12px;
-        padding: 20px;
-        text-align: center;
-        animation: shake-red 1.5s infinite;
-    }
-
-    .anim-box-neutral {
-        background: #1e293b;
-        border: 2px solid #64748b;
-        border-radius: 12px;
-        padding: 20px;
-        text-align: center;
-    }
 </style>
 """, unsafe_allow_html=True)
 
-# Función segura para cargar animaciones Lottie
-def load_lottieurl(url: str):
-    try:
-        r = requests.get(url, timeout=3)
-        if r.status_code != 200:
-            return None
-        return r.json()
-    except:
-        return None
-
-# URLs de respaldo para animaciones Lottie
-LOTTIE_HAPPY = "https://assets2.lottiefiles.com/packages/lf20_t8p2pso9.json"
-LOTTIE_SAD = "https://assets2.lottiefiles.com/packages/lf20_7x8st212.json"
-LOTTIE_NEUTRAL = "https://assets9.lottiefiles.com/packages/lf20_k2397g4q.json"
+# Animaciones Lottie directas en CDN estable
+LOTTIE_HAPPY = "https://lottie.host/8040d750-6e4f-4091-a1e1-e9451996f874/4EwOnYqDpx.json"
+LOTTIE_SAD = "https://lottie.host/8c066f7f-3db6-410c-9ee8-74a441e8ef0f/J1s2w9X0y1.json"
+LOTTIE_NEUTRAL = "https://lottie.host/28cb2eb5-2b4a-464a-9860-915eef22f280/HInL3fLqP7.json"
 
 # 2. Configuración del menú lateral
 with st.sidebar:
@@ -154,27 +105,27 @@ st.markdown(f'<div class="brand-sub"><span class="tag-pill">Módulo Activo</span
 # ---------------------------------------------------------
 if opcion_menu == "Análisis de Sentimiento & WordCloud":
     st.markdown("#### Análisis de Sentimiento y Nube de Palabras")
-    st.write("Ingresa una reseña o texto para calcular la polaridad del sentimiento y visualizar la animación correspondiente:")
+    st.write("Ingresa una reseña, poema o texto para calcular la polaridad del sentimiento y visualizar su personaje animado:")
     
     texto_sentimiento = st.text_area(
         "Texto de entrada:",
-        placeholder="Ejemplo: La experiencia fue fantástica, todo funcionó excelente.",
+        placeholder="Ingresa tu texto aquí...",
         height=140,
         label_visibility="collapsed"
     )
     
     if st.button("Procesar Sentimiento y WordCloud", use_container_width=True):
         if texto_sentimiento.strip() != "":
-            # Análisis con TextBlob
-            blob = TextBlob(texto_sentimiento)
-            
+            # Traducción robusta previa al inglés con deep-translator para precisión de TextBlob
             try:
-                blob_en = blob.translate(from_lang='auto', to='en')
-                polaridad = blob_en.sentiment.polarity
-                subjetividad = blob_en.sentiment.subjectivity
+                traductor = GoogleTranslator(source='auto', target='en')
+                texto_en = traductor.translate(texto_sentimiento)
             except:
-                polaridad = blob.sentiment.polarity
-                subjetividad = blob.sentiment.subjectivity
+                texto_en = texto_sentimiento
+
+            blob = TextBlob(texto_en)
+            polaridad = blob.sentiment.polarity
+            subjetividad = blob.sentiment.subjectivity
             
             col_res, col_anim = st.columns([1, 1], gap="large")
             
@@ -183,34 +134,22 @@ if opcion_menu == "Análisis de Sentimiento & WordCloud":
                 st.write(f"**Polaridad (-1.0 a 1.0):** `{polaridad:.2f}`")
                 st.write(f"**Subjetividad (0.0 a 1.0):** `{subjetividad:.2f}`")
                 
-                if polaridad > 0.1:
-                    estado = "Positivo"
+                if polaridad > 0.05:
                     st.success("Sentimiento detectado: Positivo")
                     lottie_url = LOTTIE_HAPPY
-                    css_class = "anim-box-positive"
-                    simbolo = "✨ POSITIVO ✨"
-                elif polaridad < -0.1:
-                    estado = "Negativo"
+                elif polaridad < -0.05:
                     st.error("Sentimiento detectado: Negativo")
                     lottie_url = LOTTIE_SAD
-                    css_class = "anim-box-negative"
-                    simbolo = "⚠️ NEGATIVO ⚠️"
                 else:
-                    estado = "Neutral"
                     st.info("Sentimiento detectado: Neutral")
                     lottie_url = LOTTIE_NEUTRAL
-                    css_class = "anim-box-neutral"
-                    simbolo = "💬 NEUTRAL 💬"
             
             with col_anim:
-                st.markdown("##### Animación Interactiva")
-                lottie_json = load_lottieurl(lottie_url)
-                
-                # Muestra la animación Lottie o el componente CSS interactivo
-                if lottie_json:
-                    st_lottie(lottie_json, height=180, key="sentiment_anim")
-                else:
-                    st.markdown(f'<div class="{css_class}"><h3>{simbolo}</h3><p>Resultado del análisis en tiempo real</p></div>', unsafe_allow_html=True)
+                st.markdown("##### Personaje Animado")
+                try:
+                    st_lottie(lottie_url, height=200, key="sentiment_lottie_anim")
+                except:
+                    st.warning("No se pudo cargar la animación.")
             
             st.markdown("---")
             st.markdown("##### Nube de Palabras (WordCloud)")
