@@ -4,8 +4,8 @@ from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 from sklearn.feature_extraction.text import TfidfVectorizer
 import pandas as pd
-import requests
 from streamlit_lottie import st_lottie
+import requests
 import re
 
 # 1. Configuración de página
@@ -15,7 +15,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilo UI/UX minimalista en modo oscuro
+# Estilo UI/UX minimalista en modo oscuro y animaciones CSS
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -68,23 +68,62 @@ st.markdown("""
         font-weight: 500;
         margin-right: 8px;
     }
+
+    /* Animaciones visuales personalizadas */
+    @keyframes pulse-green {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(34, 197, 94, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+    }
+    
+    @keyframes shake-red {
+        0%, 100% { transform: translateX(0); }
+        20%, 60% { transform: translateX(-5px); }
+        40%, 80% { transform: translateX(5px); }
+    }
+
+    .anim-box-positive {
+        background: #14532d;
+        border: 2px solid #22c55e;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        animation: pulse-green 2s infinite;
+    }
+
+    .anim-box-negative {
+        background: #7f1d1d;
+        border: 2px solid #ef4444;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        animation: shake-red 1.5s infinite;
+    }
+
+    .anim-box-neutral {
+        background: #1e293b;
+        border: 2px solid #64748b;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# Función para cargar animaciones Lottie desde URL
-def load_lottieurl(url):
+# Función segura para cargar animaciones Lottie
+def load_lottieurl(url: str):
     try:
-        r = requests.get(url)
+        r = requests.get(url, timeout=3)
         if r.status_code != 200:
             return None
         return r.json()
     except:
         return None
 
-# URLs de animaciones Lottie (Interacción por sentimiento)
-LOTTIE_HAPPY = "https://assets5.lottiefiles.com/packages/lf20_tp5e8scd.json"
+# URLs de respaldo para animaciones Lottie
+LOTTIE_HAPPY = "https://assets2.lottiefiles.com/packages/lf20_t8p2pso9.json"
+LOTTIE_SAD = "https://assets2.lottiefiles.com/packages/lf20_7x8st212.json"
 LOTTIE_NEUTRAL = "https://assets9.lottiefiles.com/packages/lf20_k2397g4q.json"
-LOTTIE_SAD = "https://assets1.lottiefiles.com/packages/lf20_7x8st212.json"
 
 # 2. Configuración del menú lateral
 with st.sidebar:
@@ -115,21 +154,20 @@ st.markdown(f'<div class="brand-sub"><span class="tag-pill">Módulo Activo</span
 # ---------------------------------------------------------
 if opcion_menu == "Análisis de Sentimiento & WordCloud":
     st.markdown("#### Análisis de Sentimiento y Nube de Palabras")
-    st.write("Ingresa una reseña, comentario o texto para calcular la polaridad del sentimiento y visualizar sus términos principales:")
+    st.write("Ingresa una reseña o texto para calcular la polaridad del sentimiento y visualizar la animación correspondiente:")
     
     texto_sentimiento = st.text_area(
         "Texto de entrada:",
-        placeholder="Ejemplo: La película fue increíble, los efectos especiales me sorprendieron gratamente y el final fue muy emocionante.",
+        placeholder="Ejemplo: La experiencia fue fantástica, todo funcionó excelente.",
         height=140,
         label_visibility="collapsed"
     )
     
     if st.button("Procesar Sentimiento y WordCloud", use_container_width=True):
         if texto_sentimiento.strip() != "":
-            # Procesamiento de Sentimiento con TextBlob
+            # Análisis con TextBlob
             blob = TextBlob(texto_sentimiento)
             
-            # Intento de traducción automática al inglés para mejorar precisión de TextBlob
             try:
                 blob_en = blob.translate(from_lang='auto', to='en')
                 polaridad = blob_en.sentiment.polarity
@@ -138,42 +176,45 @@ if opcion_menu == "Análisis de Sentimiento & WordCloud":
                 polaridad = blob.sentiment.polarity
                 subjetividad = blob.sentiment.subjectivity
             
-            col_res, col_anim = st.columns([1.2, 0.8], gap="medium")
+            col_res, col_anim = st.columns([1, 1], gap="large")
             
             with col_res:
                 st.markdown("##### Métricas del Análisis")
                 st.write(f"**Polaridad (-1.0 a 1.0):** `{polaridad:.2f}`")
                 st.write(f"**Subjetividad (0.0 a 1.0):** `{subjetividad:.2f}`")
                 
-                # Clasificación del Sentimiento
                 if polaridad > 0.1:
                     estado = "Positivo"
-                    color_box = "success"
-                    lottie_url = LOTTIE_HAPPY
                     st.success("Sentimiento detectado: Positivo")
+                    lottie_url = LOTTIE_HAPPY
+                    css_class = "anim-box-positive"
+                    simbolo = "✨ POSITIVO ✨"
                 elif polaridad < -0.1:
                     estado = "Negativo"
-                    color_box = "error"
-                    lottie_url = LOTTIE_SAD
                     st.error("Sentimiento detectado: Negativo")
+                    lottie_url = LOTTIE_SAD
+                    css_class = "anim-box-negative"
+                    simbolo = "⚠️ NEGATIVO ⚠️"
                 else:
                     estado = "Neutral"
-                    color_box = "info"
-                    lottie_url = LOTTIE_NEUTRAL
                     st.info("Sentimiento detectado: Neutral")
+                    lottie_url = LOTTIE_NEUTRAL
+                    css_class = "anim-box-neutral"
+                    simbolo = "💬 NEUTRAL 💬"
             
             with col_anim:
-                st.markdown("##### Interacción Visual (Lottie)")
-                anim_data = load_lottieurl(lottie_url)
-                if anim_data:
-                    st_lottie(anim_data, height=160, key="sentiment_anim")
+                st.markdown("##### Animación Interactiva")
+                lottie_json = load_lottieurl(lottie_url)
+                
+                # Muestra la animación Lottie o el componente CSS interactivo
+                if lottie_json:
+                    st_lottie(lottie_json, height=180, key="sentiment_anim")
                 else:
-                    st.write(f"Estado: **{estado}**")
+                    st.markdown(f'<div class="{css_class}"><h3>{simbolo}</h3><p>Resultado del análisis en tiempo real</p></div>', unsafe_allow_html=True)
             
             st.markdown("---")
             st.markdown("##### Nube de Palabras (WordCloud)")
             
-            # Limpieza básica de texto
             texto_limpio = re.sub(r'[^\w\s]', '', texto_sentimiento.lower())
             
             if len(texto_limpio.split()) >= 2:
@@ -191,7 +232,7 @@ if opcion_menu == "Análisis de Sentimiento & WordCloud":
                 ax.axis('off')
                 st.pyplot(fig)
             else:
-                st.warning("Escribe más palabras para poder generar la Nube de Palabras.")
+                st.warning("Escribe más palabras para generar la Nube de Palabras.")
         else:
             st.warning("Por favor ingresa un texto antes de presionar el botón.")
 
@@ -200,11 +241,11 @@ if opcion_menu == "Análisis de Sentimiento & WordCloud":
 # EJERCICIO 2: ANÁLISIS DE RELEVANCIA TF-IDF
 # ---------------------------------------------------------
 elif opcion_menu == "Análisis de Relevancia TF-IDF":
-    st.markdown("#### Análisis TF-IDF (Frecuencia de Término - Frecuencia Inversa de Documento)")
-    st.write("Ingresa dos o más documentos (párrafos separados por saltos de línea) para calcular la relevancia de cada palabra:")
+    st.markdown("#### Análisis TF-IDF")
+    st.write("Ingresa dos o más párrafos (uno por línea) para calcular la relevancia de cada término:")
     
     texto_tfidf = st.text_area(
-        "Colección de Documentos (Ingresa un documento por línea):",
+        "Colección de Documentos:",
         value="El desarrollo de aplicaciones web multimodales es fascinante.\nLas aplicaciones web utilizan algoritmos de inteligencia artificial.\nEl procesamiento de lenguaje natural permite analizar textos en la web.",
         height=160,
         label_visibility="collapsed"
@@ -215,7 +256,6 @@ elif opcion_menu == "Análisis de Relevancia TF-IDF":
         
         if len(documentos) >= 2:
             try:
-                # Vectorización TF-IDF
                 vectorizer = TfidfVectorizer(max_features=max_features)
                 tfidf_matrix = vectorizer.fit_transform(documentos)
                 
@@ -247,4 +287,4 @@ elif opcion_menu == "Análisis de Relevancia TF-IDF":
             except Exception as e:
                 st.error(f"Error al calcular TF-IDF: {e}")
         else:
-            st.warning("Debes ingresar al menos dos líneas/documentos distintos para realizar la comparación TF-IDF.")
+            st.warning("Ingresa al menos dos líneas distintas de texto para comparar.")
