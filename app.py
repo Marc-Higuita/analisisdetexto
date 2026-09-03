@@ -4,8 +4,7 @@ from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 from sklearn.feature_extraction.text import TfidfVectorizer
 import pandas as pd
-from streamlit_lottie import st_lottie
-from deep_translator import GoogleTranslator
+from translate import Translator
 import re
 
 # 1. Configuración de página
@@ -15,7 +14,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilo UI/UX minimalista en modo oscuro
+# Estilo UI/UX en modo oscuro y animación CSS para emojis
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -68,13 +67,53 @@ st.markdown("""
         font-weight: 500;
         margin-right: 8px;
     }
+
+    /* Personajes Animados mediante CSS y Emojis */
+    @keyframes float-anim {
+        0% { transform: translateY(0px) scale(1); }
+        50% { transform: translateY(-10px) scale(1.05); }
+        100% { transform: translateY(0px) scale(1); }
+    }
+
+    @keyframes shake-anim {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-6px) rotate(-5deg); }
+        75% { transform: translateX(6px) rotate(5deg); }
+    }
+
+    .avatar-box-positive {
+        background: #14532d;
+        border: 1px solid #22c55e;
+        border-radius: 12px;
+        padding: 24px;
+        text-align: center;
+        animation: float-anim 2.5s infinite ease-in-out;
+    }
+
+    .avatar-box-negative {
+        background: #451a1a;
+        border: 1px solid #ef4444;
+        border-radius: 12px;
+        padding: 24px;
+        text-align: center;
+        animation: shake-anim 1.5s infinite ease-in-out;
+    }
+
+    .avatar-box-neutral {
+        background: #1e293b;
+        border: 1px solid #64748b;
+        border-radius: 12px;
+        padding: 24px;
+        text-align: center;
+    }
+
+    .avatar-emoji {
+        font-size: 4rem;
+        line-height: 1;
+        margin-bottom: 8px;
+    }
 </style>
 """, unsafe_allow_html=True)
-
-# Animaciones Lottie directas en CDN estable
-LOTTIE_HAPPY = "https://lottie.host/8040d750-6e4f-4091-a1e1-e9451996f874/4EwOnYqDpx.json"
-LOTTIE_SAD = "https://lottie.host/8c066f7f-3db6-410c-9ee8-74a441e8ef0f/J1s2w9X0y1.json"
-LOTTIE_NEUTRAL = "https://lottie.host/28cb2eb5-2b4a-464a-9860-915eef22f280/HInL3fLqP7.json"
 
 # 2. Configuración del menú lateral
 with st.sidebar:
@@ -105,7 +144,7 @@ st.markdown(f'<div class="brand-sub"><span class="tag-pill">Módulo Activo</span
 # ---------------------------------------------------------
 if opcion_menu == "Análisis de Sentimiento & WordCloud":
     st.markdown("#### Análisis de Sentimiento y Nube de Palabras")
-    st.write("Ingresa una reseña, poema o texto para calcular la polaridad del sentimiento y visualizar su personaje animado:")
+    st.write("Ingresa una reseña, poema o texto para calcular la polaridad del sentimiento y visualizar el personaje correspondiente:")
     
     texto_sentimiento = st.text_area(
         "Texto de entrada:",
@@ -116,10 +155,10 @@ if opcion_menu == "Análisis de Sentimiento & WordCloud":
     
     if st.button("Procesar Sentimiento y WordCloud", use_container_width=True):
         if texto_sentimiento.strip() != "":
-            # Traducción robusta previa al inglés con deep-translator para precisión de TextBlob
+            # Traducción robusta previa al inglés
             try:
-                traductor = GoogleTranslator(source='auto', target='en')
-                texto_en = traductor.translate(texto_sentimiento)
+                translator = Translator(to_lang="en")
+                texto_en = translator.translate(texto_sentimiento)
             except:
                 texto_en = texto_sentimiento
 
@@ -127,6 +166,12 @@ if opcion_menu == "Análisis de Sentimiento & WordCloud":
             polaridad = blob.sentiment.polarity
             subjetividad = blob.sentiment.subjectivity
             
+            # Filtro de palabras tristes/negativas para ajustar la polaridad en textos literarios
+            palabras_negativas = ["herida", "dolor", "doler", "desventura", "muerte", "lloro", "triste", "mal", "miedo"]
+            if any(palabra in texto_sentimiento.lower() for palabra in palabras_negativas):
+                if polaridad > 0:
+                    polaridad = -abs(polaridad) if polaridad != 0 else -0.5
+
             col_res, col_anim = st.columns([1, 1], gap="large")
             
             with col_res:
@@ -134,22 +179,37 @@ if opcion_menu == "Análisis de Sentimiento & WordCloud":
                 st.write(f"**Polaridad (-1.0 a 1.0):** `{polaridad:.2f}`")
                 st.write(f"**Subjetividad (0.0 a 1.0):** `{subjetividad:.2f}`")
                 
-                if polaridad > 0.05:
+                if polaridad < -0.05:
+                    st.error("Sentimiento detectado: Negativo / Melancólico")
+                    card_html = """
+                    <div class="avatar-box-negative">
+                        <div class="avatar-emoji">🥺🌧️</div>
+                        <h4 style="margin:0; color:#fca5a5;">Personaje Melancólico</h4>
+                        <p style="margin:0; font-size:0.85rem; color:#f87171;">Emoción triste o dolorosa detectada</p>
+                    </div>
+                    """
+                elif polaridad > 0.05:
                     st.success("Sentimiento detectado: Positivo")
-                    lottie_url = LOTTIE_HAPPY
-                elif polaridad < -0.05:
-                    st.error("Sentimiento detectado: Negativo")
-                    lottie_url = LOTTIE_SAD
+                    card_html = """
+                    <div class="avatar-box-positive">
+                        <div class="avatar-emoji">🥳✨</div>
+                        <h4 style="margin:0; color:#86efac;">Personaje Entusiasmado</h4>
+                        <p style="margin:0; font-size:0.85rem; color:#4ade80;">Emoción alegre y optimista detectada</p>
+                    </div>
+                    """
                 else:
                     st.info("Sentimiento detectado: Neutral")
-                    lottie_url = LOTTIE_NEUTRAL
+                    card_html = """
+                    <div class="avatar-box-neutral">
+                        <div class="avatar-emoji">🧐💬</div>
+                        <h4 style="margin:0; color:#cbd5e1;">Personaje Reflexivo</h4>
+                        <p style="margin:0; font-size:0.85rem; color:#94a3b8;">Texto informativo o neutral</p>
+                    </div>
+                    """
             
             with col_anim:
-                st.markdown("##### Personaje Animado")
-                try:
-                    st_lottie(lottie_url, height=200, key="sentiment_lottie_anim")
-                except:
-                    st.warning("No se pudo cargar la animación.")
+                st.markdown("##### Personaje Interactivo")
+                st.markdown(card_html, unsafe_allow_html=True)
             
             st.markdown("---")
             st.markdown("##### Nube de Palabras (WordCloud)")
