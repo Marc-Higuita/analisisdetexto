@@ -4,5 +4,4 @@ wordcloud
 matplotlib
 scikit-learn
 pandas
-streamlit-lottie
-deep-translator
+translate
